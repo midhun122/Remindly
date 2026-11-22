@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- The window background follows the phone's light/dark setting, so there is no white flash
+         while the app starts in dark mode. -->
+    <style name="Theme.Remindly" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>
