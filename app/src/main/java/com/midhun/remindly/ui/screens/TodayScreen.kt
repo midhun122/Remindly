@@ -31,7 +31,7 @@ import com.midhun.remindly.ui.components.ReminderRow
 import com.midhun.remindly.ui.components.SectionHeader
 import com.midhun.remindly.ui.components.UpNextCard
 import com.midhun.remindly.util.formatDateShort
-
+import androidx.compose.foundation.layout.size
 @Composable
 fun TodayScreen(
     now: Long,
@@ -46,7 +46,12 @@ fun TodayScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 96.dp),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 12.dp,
+            bottom = 96.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
@@ -55,14 +60,29 @@ fun TodayScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "remindly.",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-0.8).sp
-                    ),
-                    color = colors.onBackground
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "remindly",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.8).sp
+                        ),
+                        color = colors.onBackground
+                    )
+
+                    Spacer(modifier = Modifier.width(2.dp))
+
+                    Spacer(
+                        modifier = Modifier
+                            .padding(top = 12.dp)
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(colors.primary)
+                    )
+                }
+
                 Text(
                     text = formatDateShort(now),
                     style = MaterialTheme.typography.labelLarge,
@@ -72,13 +92,17 @@ fun TodayScreen(
         }
 
         item {
-            Column(modifier = Modifier.padding(top = 6.dp, bottom = 6.dp)) {
+            Column(
+                modifier = Modifier.padding(top = 6.dp, bottom = 6.dp)
+            ) {
                 Text(
                     text = "Let's make it count.",
                     style = MaterialTheme.typography.displaySmall,
                     color = colors.onBackground
                 )
+
                 Spacer(Modifier.height(10.dp))
+
                 Spacer(
                     Modifier
                         .width(48.dp)
@@ -102,6 +126,7 @@ fun TodayScreen(
         item {
             Column {
                 Spacer(Modifier.height(8.dp))
+
                 SectionHeader(
                     title = "Today",
                     trailing = if (todayReminders.isEmpty()) null
