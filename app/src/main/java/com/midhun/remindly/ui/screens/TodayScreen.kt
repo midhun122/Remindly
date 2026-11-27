@@ -32,7 +32,9 @@ import com.midhun.remindly.ui.components.SectionHeader
 import com.midhun.remindly.ui.components.SetupBanner
 import com.midhun.remindly.ui.components.UpNextCard
 import com.midhun.remindly.util.formatDateShort
-
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 @Composable
 fun TodayScreen(
     now: Long,
@@ -58,14 +60,27 @@ fun TodayScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "remindly.",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-0.8).sp
-                    ),
-                    color = colors.onBackground
-                )
+                Row(
+                    modifier = Modifier.clearAndSetSemantics { contentDescription = "Remindly" }
+                ) {
+                    Text(
+                        text = "remindly",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-0.8).sp
+                        ),
+                        color = colors.onBackground,
+                        modifier = Modifier.alignByBaseline()
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Spacer(
+                        Modifier
+                            .alignBy { it.measuredHeight }
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(colors.primary)
+                    )
+                }
                 Text(
                     text = formatDateShort(now),
                     style = MaterialTheme.typography.labelLarge,
@@ -77,8 +92,11 @@ fun TodayScreen(
         item {
             Column(modifier = Modifier.padding(top = 6.dp, bottom = 6.dp)) {
                 Text(
-                    text = "Let’s make it count.",
-                    style = MaterialTheme.typography.displaySmall,
+                    text = "Make time for what matters.",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontSize = 29.sp,
+                        lineHeight = 35.sp
+                    ),
                     color = colors.onBackground
                 )
                 Spacer(Modifier.height(10.dp))
