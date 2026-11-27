@@ -15,6 +15,7 @@ import com.midhun.remindly.util.formatTime
 
 object AlarmNotifications {
     const val CHANNEL_RINGING = "alarm_ringing"
+    const val CHANNEL_REMINDERS = "reminders"
     const val CHANNEL_MISSED = "alarm_missed"
     const val RINGING_NOTIFICATION_ID = 1001
 
@@ -33,6 +34,17 @@ object AlarmNotifications {
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
 
+        // Normal reminders: a banner with the phone's notification sound and vibration.
+        val reminders = NotificationChannel(
+            CHANNEL_REMINDERS,
+            "Reminders",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Reminders set to notify instead of ring"
+            enableVibration(true)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        }
+
         val missed = NotificationChannel(
             CHANNEL_MISSED,
             "Missed alarms",
@@ -42,6 +54,7 @@ object AlarmNotifications {
         }
 
         manager.createNotificationChannel(ringing)
+        manager.createNotificationChannel(reminders)
         manager.createNotificationChannel(missed)
     }
 
@@ -57,12 +70,16 @@ object AlarmNotifications {
             context, 0, screenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val dismissPending = PendingIntent.getService(
+        val silencePending = PendingIntent.getService(
             context, 1, AlarmService.dismissIntent(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val snoozePending = PendingIntent.getService(
             context, 2, AlarmService.snoozeIntent(context, AlarmService.DEFAULT_SNOOZE_MINUTES),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val donePending = PendingIntent.getService(
+            context, 3, AlarmService.doneIntent(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -78,10 +95,46 @@ object AlarmNotifications {
             .setOnlyAlertOnce(true)
             .setContentIntent(screenPending)
             .setFullScreenIntent(screenPending, true)
+            .addAction(0, "Done", donePending)
             .addAction(0, "Snooze", snoozePending)
-            .addAction(0, "Dismiss", dismissPending)
+            .addAction(0, "Silence", silencePending)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
+    }
+
+    /** A normal reminder notification (for reminders set to "Notification" instead of "Alarm"). */
+    @SuppressLint("MissingPermission")
+    fun postReminder(context: Context, spec: AlarmSpec) {
+        ensureChannels(context)
+        val manager = NotificationManagerCompat.from(context)
+        if (!manager.areNotificationsEnabled()) return
+
+        val openApp = PendingIntent.getActivity(
+            context, 0, Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val donePending = PendingIntent.getBroadcast(
+            context, 0, ReminderActionReceiver.doneIntent(context, spec),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val snoozePending = PendingIntent.getBroadcast(
+            context, 0, ReminderActionReceiver.snoozeIntent(context, spec),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_REMINDERS)
+            .setSmallIcon(R.drawable.ic_stat_alarm)
+            .setContentTitle(spec.title)
+            .setContentText("Reminder, ${formatTime(spec.triggerAtMillis)}")
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(true)
+            .setContentIntent(openApp)
+            .addAction(0, "Done", donePending)
+            .addAction(0, "Snooze ${ReminderActionReceiver.SNOOZE_MINUTES} min", snoozePending)
+            .build()
+        manager.notify(spec.id.hashCode(), notification)
     }
 
     /** A normal notification so an alarm nobody answered is never silently lost. */

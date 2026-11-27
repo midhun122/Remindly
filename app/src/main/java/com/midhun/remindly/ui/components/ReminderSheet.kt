@@ -63,6 +63,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.midhun.remindly.data.Reminder
+import com.midhun.remindly.data.ReminderMode
 import com.midhun.remindly.util.dayLabel
 import com.midhun.remindly.util.formatTime
 import com.midhun.remindly.util.millisToDateTime
@@ -83,7 +84,7 @@ fun ReminderSheet(
     existing: Reminder?,
     now: Long,
     onDismiss: () -> Unit,
-    onSave: (title: String, triggerAtMillis: Long) -> Unit,
+    onSave: (title: String, triggerAtMillis: Long, mode: ReminderMode) -> Unit,
     onDelete: (() -> Unit)?
 ) {
     val colors = MaterialTheme.colorScheme
@@ -102,12 +103,13 @@ fun ReminderSheet(
             }
         )
     }
+    var mode by remember { mutableStateOf(existing?.mode ?: ReminderMode.ALARM) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
     val isPast = dateTime.toEpochMillis() <= now
     val canSave = title.isNotBlank() && (!isPast || existing?.completed == true)
-    val save = { if (canSave) onSave(title.trim(), dateTime.toEpochMillis()) }
+    val save = { if (canSave) onSave(title.trim(), dateTime.toEpochMillis(), mode) }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -207,6 +209,8 @@ fun ReminderSheet(
                     modifier = Modifier.weight(1f)
                 )
             }
+
+            AlertModeSelector(selected = mode, onSelect = { mode = it })
 
             if (isPast && existing?.completed != true) {
                 Text(

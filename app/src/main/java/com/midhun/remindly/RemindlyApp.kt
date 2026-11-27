@@ -27,8 +27,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.midhun.remindly.alarm.AlarmPermissions
+import com.midhun.remindly.alarm.ReminderAlarms
 import com.midhun.remindly.data.Reminder
+import com.midhun.remindly.data.ReminderMode
 import com.midhun.remindly.data.RemindlyStore
 import com.midhun.remindly.data.ThemeMode
 import com.midhun.remindly.ui.components.AppTab
@@ -86,6 +90,7 @@ private fun RemindlyScaffold(
     resumeTick: Int
 ) {
     val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
 
@@ -99,6 +104,19 @@ private fun RemindlyScaffold(
             delay(30_000)
             now = System.currentTimeMillis()
         }
+    }
+
+    // Self-repair: every time the app comes to the front, make sure each pending reminder has
+    // its alarm. This also fixes alarms Android dropped (for example after a force-stop) and
+    // alarms that couldn't be set before the user allowed alarms in Settings.
+    LaunchedEffect(resumeTick) {
+        ReminderAlarms.sync(context, emptyList(), reminders)
+    }
+
+    // Alarms and notifications still blocked on this phone? Then reminders can't ring.
+    val needsSetup = remember(resumeTick) {
+        val readiness = AlarmPermissions.readiness(context)
+        !readiness.notifications || !readiness.exactAlarms
     }
 
     val missed = remember(reminders, now) {
@@ -129,9 +147,14 @@ private fun RemindlyScaffold(
             .minByOrNull { it.triggerAtMillis }
     }
 
-    // ----- actions: each one changes the saved list; the screens update automatically -----
+    // ----- actions: each one saves the list AND keeps the alarms in step with it -----
+    suspend fun applyChange(transform: (List<Reminder>) -> List<Reminder>) {
+        val change = store.updateReminders(transform)
+        ReminderAlarms.sync(context, change.before, change.after)
+    }
+
     fun update(transform: (List<Reminder>) -> List<Reminder>) {
-        scope.launch { store.updateReminders(transform) }
+        scope.launch { applyChange(transform) }
     }
 
     fun toggle(target: Reminder) = update { list ->
@@ -146,15 +169,28 @@ private fun RemindlyScaffold(
 
     fun remove(target: Reminder) {
         scope.launch {
-            store.updateReminders { list -> list.filterNot { it.id == target.id } }
+            applyChange { list -> list.filterNot { it.id == target.id } }
             val result = snackbar.showSnackbar(
                 message = "Reminder removed",
                 actionLabel = "Undo",
                 duration = SnackbarDuration.Short
             )
             if (result == SnackbarResult.ActionPerformed) {
-                store.updateReminders { list -> list + target }
+                applyChange { list -> list + target }
             }
+        }
+    }
+
+    fun warnIfCannotRing() {
+        val readiness = AlarmPermissions.readiness(context)
+        if (readiness.notifications && readiness.exactAlarms) return
+        scope.launch {
+            val result = snackbar.showSnackbar(
+                message = "Allow alarms in Settings so this reminder can ring",
+                actionLabel = "Set up",
+                duration = SnackbarDuration.Long
+            )
+            if (result == SnackbarResult.ActionPerformed) tab = AppTab.Settings
         }
     }
 
@@ -194,6 +230,8 @@ private fun RemindlyScaffold(
                     now = now,
                     todayReminders = todayList,
                     upNext = upNext,
+                    needsSetup = needsSetup,
+                    onSetup = { tab = AppTab.Settings },
                     onToggle = { toggle(it) },
                     onEdit = { editor = EditorState.Edit(it) },
                     onSnooze = { snooze(it) }
@@ -230,17 +268,24 @@ private fun RemindlyScaffold(
             existing = existing,
             now = now,
             onDismiss = { editor = null },
-            onSave = { title, triggerAt ->
+            onSave = { title, triggerAt, mode: ReminderMode ->
                 if (existing == null) {
-                    update { list -> list + Reminder(title = title, triggerAtMillis = triggerAt) }
+                    update { list ->
+                        list + Reminder(title = title, triggerAtMillis = triggerAt, mode = mode)
+                    }
                 } else {
                     update { list ->
                         list.map {
-                            if (it.id == existing.id) it.copy(title = title, triggerAtMillis = triggerAt) else it
+                            if (it.id == existing.id) {
+                                it.copy(title = title, triggerAtMillis = triggerAt, mode = mode)
+                            } else {
+                                it
+                            }
                         }
                     }
                 }
                 editor = null
+                warnIfCannotRing()
             },
             onDelete = if (existing != null) {
                 {

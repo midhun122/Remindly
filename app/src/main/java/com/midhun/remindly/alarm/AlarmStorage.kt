@@ -20,7 +20,7 @@ object AlarmStorage {
             val array = JSONArray(raw)
             List(array.length()) { i ->
                 val o = array.getJSONObject(i)
-                AlarmSpec(o.getString("id"), o.getString("title"), o.getLong("at"))
+                AlarmSpec(o.getString("id"), o.getString("title"), o.getLong("at"), o.optBoolean("loud", true))
             }
         } catch (e: JSONException) {
             emptyList()
@@ -40,7 +40,9 @@ object AlarmStorage {
     private fun write(context: Context, list: List<AlarmSpec>) {
         val array = JSONArray()
         list.forEach {
-            array.put(JSONObject().put("id", it.id).put("title", it.title).put("at", it.triggerAtMillis))
+            array.put(
+                JSONObject().put("id", it.id).put("title", it.title).put("at", it.triggerAtMillis).put("loud", it.loud)
+            )
         }
         prefs(context).edit().putString(KEY, array.toString()).apply()
     }

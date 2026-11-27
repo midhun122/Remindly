@@ -23,14 +23,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,14 +65,18 @@ class AlarmActivity : ComponentActivity() {
             RemindlyTheme(darkTheme = false) {
                 AlarmScreen(
                     spec = ringing ?: fromIntent,
-                    onDismiss = {
-                        startService(AlarmService.dismissIntent(this))
+                    onDone = {
+                        startService(AlarmService.doneIntent(this))
                         finish()
                     },
                     onSnooze = {
                         startService(
                             AlarmService.snoozeIntent(this, AlarmService.DEFAULT_SNOOZE_MINUTES)
                         )
+                        finish()
+                    },
+                    onSilence = {
+                        startService(AlarmService.dismissIntent(this))
                         finish()
                     }
                 )
@@ -99,8 +102,9 @@ class AlarmActivity : ComponentActivity() {
 @Composable
 private fun AlarmScreen(
     spec: AlarmSpec?,
-    onDismiss: () -> Unit,
-    onSnooze: () -> Unit
+    onDone: () -> Unit,
+    onSnooze: () -> Unit,
+    onSilence: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -113,14 +117,18 @@ private fun AlarmScreen(
         Spacer(Modifier.weight(1f))
 
         Text(
-            text = "Alarm",
+            text = "Reminder",
             style = MaterialTheme.typography.titleMedium,
             color = InkOnYellow.copy(alpha = 0.8f)
         )
         Spacer(Modifier.height(8.dp))
         Text(
             text = if (spec != null) formatTime(spec.triggerAtMillis) else "",
-            style = TextStyle(fontSize = 64.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-2).sp),
+            style = MaterialTheme.typography.displaySmall.copy(
+                fontSize = 68.sp,
+                lineHeight = 72.sp,
+                letterSpacing = (-2.5).sp
+            ),
             color = InkOnYellow
         )
         Spacer(Modifier.height(16.dp))
@@ -135,14 +143,14 @@ private fun AlarmScreen(
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(
-                onClick = onDismiss,
+                onClick = onDone,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp),
                 shape = MaterialTheme.shapes.large,
                 colors = ButtonDefaults.buttonColors(containerColor = InkOnYellow, contentColor = Yellow)
             ) {
-                Text("Dismiss", style = MaterialTheme.typography.titleMedium)
+                Text("Done", style = MaterialTheme.typography.titleMedium)
             }
             OutlinedButton(
                 onClick = onSnooze,
@@ -155,8 +163,16 @@ private fun AlarmScreen(
             ) {
                 Text("Snooze ${AlarmService.DEFAULT_SNOOZE_MINUTES} min", style = MaterialTheme.typography.titleMedium)
             }
+            TextButton(
+                onClick = onSilence,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(contentColor = InkOnYellow)
+            ) {
+                Text("Silence", style = MaterialTheme.typography.titleMedium)
+            }
             Text(
-                text = "Stops by itself after 60 seconds",
+                text = "Silence stops the sound but keeps this reminder open until you mark it done. " +
+                    "It also stops by itself after 60 seconds.",
                 style = MaterialTheme.typography.bodySmall,
                 color = InkOnYellow.copy(alpha = 0.8f),
                 modifier = Modifier.fillMaxWidth(),

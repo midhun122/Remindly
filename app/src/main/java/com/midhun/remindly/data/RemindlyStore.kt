@@ -15,6 +15,9 @@ private val Context.remindlyDataStore by preferencesDataStore(name = "remindly")
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** What a save changed: the list before and after. */
+data class ReminderChange(val before: List<Reminder>, val after: List<Reminder>)
+
 /**
  * Saves the theme choice and the reminders on the phone.
  * Reminders are stored as JSON for now; this is replaced by a Room database in the next phase.
@@ -38,16 +41,23 @@ class RemindlyStore(context: Context) {
         .map { prefs -> decode(prefs[REMINDERS_KEY]) }
         .distinctUntilChanged()
 
-    /** Reads the current list, applies [transform], and saves the result in one atomic step. */
-    suspend fun updateReminders(transform: (List<Reminder>) -> List<Reminder>) {
+    /**
+     * Reads the current list, applies [transform], and saves the result in one atomic step.
+     * Returns the list before and after, so alarms can be scheduled or cancelled to match.
+     */
+    suspend fun updateReminders(transform: (List<Reminder>) -> List<Reminder>): ReminderChange {
+        var before: List<Reminder> = emptyList()
+        var after: List<Reminder> = emptyList()
         dataStore.edit { prefs ->
-            val current = decode(prefs[REMINDERS_KEY])
-            prefs[REMINDERS_KEY] = encode(transform(current))
+            before = decode(prefs[REMINDERS_KEY])
+            after = transform(before)
+            prefs[REMINDERS_KEY] = encode(after)
         }
+        return ReminderChange(before, after)
     }
 
     private fun decode(raw: String?): List<Reminder> {
-        if (raw == null) return seedReminders
+        if (raw == null) return emptyList()
         return try {
             val array = JSONArray(raw)
             List(array.length()) { i ->
@@ -56,7 +66,9 @@ class RemindlyStore(context: Context) {
                     id = o.getString("id"),
                     title = o.getString("title"),
                     triggerAtMillis = o.getLong("at"),
-                    completed = o.optBoolean("done", false)
+                    completed = o.optBoolean("done", false),
+                    mode = ReminderMode.entries.firstOrNull { it.name == o.optString("mode") }
+                        ?: ReminderMode.ALARM
                 )
             }
         } catch (e: JSONException) {
@@ -73,6 +85,7 @@ class RemindlyStore(context: Context) {
                     .put("title", r.title)
                     .put("at", r.triggerAtMillis)
                     .put("done", r.completed)
+                    .put("mode", r.mode.name)
             )
         }
         return array.toString()

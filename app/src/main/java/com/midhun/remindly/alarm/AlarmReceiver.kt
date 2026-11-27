@@ -8,12 +8,18 @@ import androidx.core.content.ContextCompat
 
 /**
  * Android calls this at the exact alarm time, even if the app is closed.
- * It does almost nothing itself: it hands over to the foreground service, which plays the sound.
+ * Alarm reminders hand over to the foreground service, which plays the sound.
+ * Notification reminders just post a normal notification.
  */
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val spec = intent.toAlarmSpec() ?: return
         AlarmStorage.remove(context, spec.id)
+
+        if (!spec.loud) {
+            AlarmNotifications.postReminder(context, spec)
+            return
+        }
 
         try {
             ContextCompat.startForegroundService(context, AlarmService.startIntent(context, spec))

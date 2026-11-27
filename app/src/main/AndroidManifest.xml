@@ -53,6 +53,11 @@
             android:name=".alarm.AlarmReceiver"
             android:exported="false" />
 
+        <!-- Handles the Done and Snooze buttons on reminder notifications. -->
+        <receiver
+            android:name=".alarm.ReminderActionReceiver"
+            android:exported="false" />
+
         <!-- Plays the sound and vibration while the alarm rings. -->
         <service
             android:name=".alarm.AlarmService"

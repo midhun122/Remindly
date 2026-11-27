@@ -45,6 +45,7 @@ class AlarmService : Service() {
                 }
             }
 
+            ACTION_DONE -> done()
             ACTION_DISMISS -> dismiss()
             ACTION_SNOOZE -> snooze(intent.getIntExtra(EXTRA_SNOOZE_MINUTES, DEFAULT_SNOOZE_MINUTES))
             else -> stopSelf()
@@ -86,6 +87,16 @@ class AlarmService : Service() {
         handler.postDelayed(autoStop, RING_DURATION_MILLIS)
     }
 
+    /** The task is finished: mark the reminder done, then stop ringing. */
+    private fun done() {
+        current?.let { ReminderActions.markDone(this, it.id) }
+        dismiss()
+    }
+
+    /**
+     * Silence: stop the noise only. The reminder stays pending, so it will show up in Missed
+     * until it is marked done or rescheduled.
+     */
     private fun dismiss() {
         stopPlayback()
         AlarmState.set(null)
@@ -95,11 +106,7 @@ class AlarmService : Service() {
     }
 
     private fun snooze(minutes: Int) {
-        val spec = current
-        if (spec != null) {
-            val later = spec.copy(triggerAtMillis = System.currentTimeMillis() + minutes * 60_000L)
-            AlarmScheduler.schedule(this, later)
-        }
+        current?.let { ReminderActions.snooze(this, it, minutes) }
         dismiss()
     }
 
@@ -191,14 +198,20 @@ class AlarmService : Service() {
 
         private const val ACTION_START = "com.midhun.remindly.action.START_RINGING"
         private const val ACTION_DISMISS = "com.midhun.remindly.action.DISMISS"
+        private const val ACTION_DONE = "com.midhun.remindly.action.DONE"
         private const val ACTION_SNOOZE = "com.midhun.remindly.action.SNOOZE"
         private const val EXTRA_SNOOZE_MINUTES = "com.midhun.remindly.extra.SNOOZE_MINUTES"
 
         fun startIntent(context: Context, spec: AlarmSpec): Intent =
             spec.putInto(Intent(context, AlarmService::class.java).setAction(ACTION_START))
 
+        /** Silence the alarm but keep the reminder pending. */
         fun dismissIntent(context: Context): Intent =
             Intent(context, AlarmService::class.java).setAction(ACTION_DISMISS)
+
+        /** Mark the reminder done and stop the alarm. */
+        fun doneIntent(context: Context): Intent =
+            Intent(context, AlarmService::class.java).setAction(ACTION_DONE)
 
         fun snoozeIntent(context: Context, minutes: Int): Intent =
             Intent(context, AlarmService::class.java)

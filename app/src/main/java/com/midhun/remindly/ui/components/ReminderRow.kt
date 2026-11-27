@@ -15,6 +15,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,6 +31,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.midhun.remindly.data.Reminder
+import com.midhun.remindly.data.ReminderMode
 import com.midhun.remindly.util.dayLabel
 import com.midhun.remindly.util.formatTime
 
@@ -77,6 +80,14 @@ fun ReminderRow(
                 color = colors.onSurfaceVariant
             )
         }
+
+        Icon(
+            imageVector = if (reminder.mode == ReminderMode.ALARM) Icons.Outlined.Alarm
+            else Icons.Outlined.Notifications,
+            contentDescription = if (reminder.mode == ReminderMode.ALARM) "Alarm" else "Notification",
+            tint = colors.onSurfaceVariant,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 

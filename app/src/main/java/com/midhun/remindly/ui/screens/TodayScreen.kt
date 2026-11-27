@@ -29,14 +29,17 @@ import com.midhun.remindly.data.Reminder
 import com.midhun.remindly.ui.components.EmptyState
 import com.midhun.remindly.ui.components.ReminderRow
 import com.midhun.remindly.ui.components.SectionHeader
+import com.midhun.remindly.ui.components.SetupBanner
 import com.midhun.remindly.ui.components.UpNextCard
 import com.midhun.remindly.util.formatDateShort
-import androidx.compose.foundation.layout.size
+
 @Composable
 fun TodayScreen(
     now: Long,
     todayReminders: List<Reminder>,
     upNext: Reminder?,
+    needsSetup: Boolean,
+    onSetup: () -> Unit,
     onToggle: (Reminder) -> Unit,
     onEdit: (Reminder) -> Unit,
     onSnooze: (Reminder) -> Unit
@@ -46,12 +49,7 @@ fun TodayScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 20.dp,
-            end = 20.dp,
-            top = 12.dp,
-            bottom = 96.dp
-        ),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
@@ -60,29 +58,14 @@ fun TodayScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "remindly",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.8).sp
-                        ),
-                        color = colors.onBackground
-                    )
-
-                    Spacer(modifier = Modifier.width(2.dp))
-
-                    Spacer(
-                        modifier = Modifier
-                            .padding(top = 12.dp)
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(colors.primary)
-                    )
-                }
-
+                Text(
+                    text = "remindly.",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-0.8).sp
+                    ),
+                    color = colors.onBackground
+                )
                 Text(
                     text = formatDateShort(now),
                     style = MaterialTheme.typography.labelLarge,
@@ -92,17 +75,13 @@ fun TodayScreen(
         }
 
         item {
-            Column(
-                modifier = Modifier.padding(top = 6.dp, bottom = 6.dp)
-            ) {
+            Column(modifier = Modifier.padding(top = 6.dp, bottom = 6.dp)) {
                 Text(
-                    text = "Let's make it count.",
+                    text = "Let’s make it count.",
                     style = MaterialTheme.typography.displaySmall,
                     color = colors.onBackground
                 )
-
                 Spacer(Modifier.height(10.dp))
-
                 Spacer(
                     Modifier
                         .width(48.dp)
@@ -111,6 +90,10 @@ fun TodayScreen(
                         .background(colors.primary)
                 )
             }
+        }
+
+        if (needsSetup) {
+            item { SetupBanner(onSetup = onSetup) }
         }
 
         item {
@@ -126,7 +109,6 @@ fun TodayScreen(
         item {
             Column {
                 Spacer(Modifier.height(8.dp))
-
                 SectionHeader(
                     title = "Today",
                     trailing = if (todayReminders.isEmpty()) null
@@ -150,7 +132,8 @@ fun TodayScreen(
                     now = now,
                     showDay = false,
                     onToggle = { onToggle(reminder) },
-                    onClick = { onEdit(reminder) }
+                    onClick = { onEdit(reminder) },
+                    modifier = Modifier.animateItem()
                 )
             }
         }
